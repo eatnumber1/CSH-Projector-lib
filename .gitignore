@@ -18,3 +18,8 @@ autom4te.cache/*
 config.h
 stamp-h1
 src/.deps
+autoscan-2.68.log
+config.h.in~
+configure.scan
+src/projector
+config.h.in
