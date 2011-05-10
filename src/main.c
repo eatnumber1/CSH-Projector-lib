@@ -9,6 +9,8 @@
 
 #define PORTNUMBER "7142"
 
+#include "src/nec.h"
+
 int main(int argc, char **argv) {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <ip address>\n", argv[0]);
