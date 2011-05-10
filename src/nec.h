@@ -1,6 +1,8 @@
 #ifndef __NEC_H
 #define __NEC_H
 
+#include <stdint.h>
+
 // First byte of nec_error data
 #define NEC_ERR_ENOTSUPPORTED 0x0000
 #define NEC_ERR_EPARAM        0x0100
@@ -127,5 +129,21 @@ static void init_err() {
 
 #define nec_err_str(x) (nec_err_msg[x])
 #define nec_errclass_str(x) (nec_err_msg[(x & 0xF00) + NEC_LAST_ERR])
+
+// Near as I can tell, we never have a message over 255 bytes long, so we can
+// get away with not conforming exactly to the spec so we can avoid struct
+// alignment issues
+struct nec_msg_hdr {
+    uint16_t command;
+    uint8_t projector_id;
+    uint8_t model_code;
+    uint8_t data_len;
+};
+
+struct nec_msg {
+    struct nec_msg_hdr* hdr;
+    void* data;
+    uint8_t chksm;
+};
 
 #endif
