@@ -9,7 +9,7 @@
 
 #define PORTNUMBER "7142"
 
-#include "src/nec.h"
+#include "include/nec.h"
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -43,7 +43,14 @@ int main(int argc, char **argv) {
             perror("connect");
             continue;
         }
+
+        test(3, 4);
     }
 
     return 0;
+}
+
+int global;
+int test(int x, int y) {
+    return x + y;
 }
