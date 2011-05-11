@@ -88,11 +88,13 @@ int nec_errno(struct nec_err* err, struct nec_msg* msg) {
 }
 
 /* 0 - no errors
- * 1 - null header
+ * 1 - null message
+ * 2 - null header
  * 0x8000 - errors
  */
 int nec_checkerrs(struct nec_msg* msg) {
-    if (msg->hdr == NULL) { return 1; }
+    if (msg == NULL) { return 1; }
+    if (msg->hdr == NULL) { return 2; }
 
     return (msg->hdr->command & NEC_ERRMASK);
 }
