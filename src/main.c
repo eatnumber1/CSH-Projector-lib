@@ -46,6 +46,21 @@ int main(int argc, char **argv) {
         }
     }
 
+    struct nec_msg_hdr* hdr = malloc(sizeof(struct nec_msg_hdr));
+    struct nec_msg* msg = malloc(sizeof(struct nec_msg));
+    memset(hdr, 0, sizeof(struct nec_msg_hdr));
+    memset(msg, 0, sizeof(struct nec_msg));
+
+    hdr->command = 0xA200;
+    hdr->projector_id = 0x01;
+    hdr->model_code = 0x20;
+    hdr->data_len = 0x02;
+    msg->hdr = hdr;
+
+    printf("Is there an error? %x\n", nec_checkerrs(msg));
+    free(hdr);
+    free(msg);
+
     freeaddrinfo(res);
 
     return 0;

@@ -53,6 +53,9 @@
 
 #define NEC_NUMBER_OF_ERRORS 32
 
+// & this against command field of the header
+#define NEC_ERRMASK 0x8000
+
 static char** nec_err_msg;
 
 #define nec_err_str(x) (nec_err_msg[x])
@@ -81,6 +84,7 @@ struct nec_err {
 };
 
 int nec_errno(struct nec_err* err, struct nec_msg* msg);
+int nec_checkerrs(struct nec_msg* msg);
 
 #endif
 
