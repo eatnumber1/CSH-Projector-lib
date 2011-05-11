@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <arpa/inet.h>
@@ -43,14 +44,9 @@ int main(int argc, char **argv) {
             perror("connect");
             continue;
         }
-
-        test(3, 4);
     }
 
-    return 0;
-}
+    freeaddrinfo(res);
 
-int global;
-int test(int x, int y) {
-    return x + y;
+    return 0;
 }

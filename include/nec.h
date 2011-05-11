@@ -70,16 +70,18 @@ struct nec_msg_hdr {
 
 struct nec_msg {
     struct nec_msg_hdr* hdr;
-    void* data;
+    uint8_t* data;
     uint8_t chksm;
 };
 
 struct nec_err {
-    uint8_t class;
-    uint8_t no;
+    uint16_t class;
+    uint16_t no;
     const char* msg;
 };
 
-int nec_errno(struct nec_err* err, const struct nec_msg* msg);
+int nec_errno(struct nec_err* err, struct nec_msg* msg);
 
 #endif
+
+// vim:ft=c

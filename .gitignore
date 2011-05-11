@@ -24,3 +24,6 @@ configure.scan
 src/projector
 config.h.in
 *.swp
+compile
+src/.libs
+*.l[ao]

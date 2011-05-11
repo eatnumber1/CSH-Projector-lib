@@ -74,3 +74,15 @@ static void init_err() {
     nec_err_msg[NEC_ERR_ELOGOTRANS + NEC_LAST_ERR] = 
         "Logo transfer error";
 }
+
+int nec_errno(struct nec_err* err, struct nec_msg* msg) {
+    init_err();
+
+    if (msg->data == NULL) { return 1; }
+
+    err->no = *((short int*)msg->data);
+    err->class = err->no & (short int)(0xFF00);
+    err->msg = nec_err_str(err->no);
+
+    return 0;
+}
