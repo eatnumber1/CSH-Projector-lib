@@ -1,0 +1,58 @@
+The lounge projector is an Acer H5360.
+It has similar remote functionality, although only has serial, rather than the serial and ethernet interfaces available on the NEC NP215. I would like to see the API generic enough to cover both (and future) projector control needs.
+
+The Acer H5360 talks 9600-8-N-1 serial, and has a derpy 3-pin connector, of which the pins are RX, TX, and GND.
+
+The protocol to talk to the device is as follows:
+
+No	Code (character)	Function feature
+1	OKOKOKOKOK\r	Power On
+2	* 0 IR 001\r	Power On
+3	* 0 IR 002\r	Power Off
+4	* 0 IR 004\r	Keystone
+5	* 0 IR 006\r	Mute
+6	* 0 IR 007\r	Freeze
+7	* 0 IR 008\r	Menu
+8	* 0 IR 009\r	Up
+9	* 0 IR 010\r	Down
+10	* 0 IR 011\r	Right
+11	* 0 IR 012\r	Left
+12	* 0 IR 013\r	Enter
+13	* 0 IR 014\r	Re-Sync
+14	* 0 IR 015\r	Source Analog RGB for D-sub
+15	* 0 IR 016\r	Source Digital RGB
+16	* 0 IR 017\r	Source PbPr for D-sub
+17	* 0 IR 018\r	Source S-Video
+18	* 0 IR 019\r	Source Composite Video
+19	* 0 IR 020\r	Source Component Video
+20	* 0 IR 021\r	Aspect ratio 16:9
+21	* 0 IR 022\r	Aspect ratio 4:3
+22	* 0 IR 023\r	Volume +
+23	* 0 IR 024\r	Volume –
+24	* 0 IR 025\r	Brightness
+25	* 0 IR 026\r	Contrast
+26	* 0 IR 027\r	Color Temperature
+27	* 0 IR 028\r	Source Analog RGB for DVI Port
+28	* 0 IR 029\r	Source Analog YPbPr for DVI Port
+29	* 0 IR 030\r	Hide
+30	* 0 IR 031\r	Source
+31	* 0 IR 032\r	Video: Color saturation adjustment
+32	* 0 IR 033\r	Video: Hue adjustment
+33	* 0 IR 034\r	Video: Sharpness adjustment
+34	* 0 IR 035\r	Query Model name
+35	* 0 IR 036\r	Query Native display resolution
+36	* 0 IR 037\r	Query company name
+37	* 0 IR 040\r	Aspect ratioL.Box
+38	* 0 IR 041\r	Aspect ratio 1:1
+39	* 0 IR 042\r	Keystone Up
+40	* 0 IR 043\r	Keystone Down
+41	* 0 IR 044\r	Keystone Left
+42	* 0 IR 045\r	Keystone Right
+43	* 0 IR 046\r	Zoom
+44	* 0 IR 047\r	e-Key
+45	* 0 IR 048\r	Color RGB
+46	* 0 IR 049\r	Language
+47	* 0 IR 050\r	Source HDMI
+
+
+This spec is fairly consistent among ACER projectors, apparently, by the way.
