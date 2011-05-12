@@ -1,12 +1,15 @@
 #include "include/nec.h"
 
-#include <stdio.h>
+#include <netdb.h>
+#include <stdlib.h>
 #include <string.h>
 
-static void init_err() {
-    if (nec_err_msg != NULL) { return; }
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
-    nec_err_msg = calloc(NEC_NUMBER_OF_ERRORS, sizeof(char*));
+static void init_err() {
+    if (nec_err_msg != NULL) return;
 
     nec_err_msg[NEC_ERR_UNKNOWN_COMMAND ] = 
         "Unknown command";
@@ -78,10 +81,10 @@ static void init_err() {
 int nec_errno(struct nec_err* err, struct nec_msg* msg) {
     init_err();
 
-    if (msg->data == NULL) { return 1; }
+    if (msg->data == NULL) return 1;
 
-    err->no = *((short int*)msg->data);
-    err->class = err->no & (short int)(0xFF00);
+    err->no = *((uint16_t*)msg->data);
+    err->class = err->no & (uint16_t)(0xFF00);
     err->msg = nec_err_str(err->no);
 
     return 0;
@@ -93,8 +96,15 @@ int nec_errno(struct nec_err* err, struct nec_msg* msg) {
  * 0x8000 - errors
  */
 int nec_checkerrs(struct nec_msg* msg) {
-    if (msg == NULL) { return 1; }
-    if (msg->hdr == NULL) { return 2; }
+    if (msg == NULL) return 1;
+    if (msg->hdr == NULL) return 2;
 
     return (msg->hdr->command & NEC_ERRMASK);
+}
+
+/* Takes an address (either a filename or an IP) and connects to it,
+ * and fills in (and malloc's) a projector struct
+ */
+int nec_connect(struct nec_projector* proj, const char* address) {
+    proj = malloc(sizeof(struct nec_projector));
 }

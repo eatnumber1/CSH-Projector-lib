@@ -61,15 +61,20 @@ static char** nec_err_msg;
 #define nec_err_str(x) (nec_err_msg[x])
 #define nec_errclass_str(x) (nec_err_msg[(x & 0xF00) + NEC_LAST_ERR])
 
+#define PORTNUMBER "7142"
+
 // Near as I can tell, we never have a message over 255 bytes long, so we can
 // get away with not conforming exactly to the spec so we can avoid struct
 // alignment issues
+
+#pragma pack(push,1)
 struct nec_msg_hdr {
     uint16_t command;
     uint8_t projector_id;
-    uint8_t model_code;
-    uint8_t data_len;
+    uint8_t model_code :4;
+    uint16_t data_len :12;
 };
+#pragma pack(pop)
 
 struct nec_msg {
     struct nec_msg_hdr* hdr;
@@ -83,8 +88,19 @@ struct nec_err {
     const char* msg;
 };
 
+struct nec_projector {
+    int fd;                 // File descriptor to talk to
+    short projector_id;     // ID of the projector (filled in automatically)
+    short model_id;         // Model ID (filled in automatically)
+    char serial;            // 1 if connected via serial
+};
+
 int nec_errno(struct nec_err* err, struct nec_msg* msg);
 int nec_checkerrs(struct nec_msg* msg);
+int nec_connect(struct nec_projector* proj, const char* address);
+int nec_disconnect(struct nec_projector* proj);
+int nec_send(struct nec_projector* proj, struct nec_msg* msg);
+int nec_recv(struct nec_projector* proj);
 
 #endif
 

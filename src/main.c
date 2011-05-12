@@ -5,8 +5,8 @@
 #include <string.h>
 
 #include <arpa/inet.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 
 #define PORTNUMBER "7142"
 
@@ -53,9 +53,10 @@ int main(int argc, char **argv) {
 
     hdr->command = 0xA200;
     hdr->projector_id = 0x01;
-    hdr->model_code = 0x20;
+    hdr->model_code = 0x2;
     hdr->data_len = 0x02;
     msg->hdr = hdr;
+    printf("%d\n", sizeof(*hdr));
 
     printf("Is there an error? %x\n", nec_checkerrs(msg));
     free(hdr);
