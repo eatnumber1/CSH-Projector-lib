@@ -1,68 +1,39 @@
-#include <errno.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#import <stdio.h>
+#import <stdlib.h>
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
+#import "cerror.h"
+#import "nec.h"
 
-#define PORTNUMBER "7142"
+void die( cerror_t *err ) __attribute__((noreturn));
+void die( cerror_t *err ) {
+	fprintf(stderr, "%s", err->message);
+	if( err->type == CERROR_ID_NEC && err->code == NEC_ERR_PROTOCOL ) {
+		nec_error_t *nec_err = (nec_error_t *) err;
+		fprintf(stderr, ": %s: %s", nec_err->type.message, nec_err->subtype.message);
+	}
+	fprintf(stderr, "\n");
+	exit(EXIT_FAILURE);
+}
 
-#include "include/nec.h"
+int main() {
+	nec_library_init();
 
-int main(int argc, char **argv) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <ip address>\n", argv[0]);
-        return 1;
-    }
+	nec_header_t header = {
+		.id.command = NEC_COMMAND_RUNNING_SENSE,
+		.projector_id = NEC_PROJECTOR_ID_BROADCAST_1,
+		.model = NEC_MODEL_BROADCAST_1,
+		.data_length = 0
+	};
+	
+	cerror_t *err = NULL;
+	if( !nec_write(&err, &header, NULL, stdout) ) die(err);
 
-    char *ip_c = argv[1];
-    int ret, sock;
+	nec_data_t *data = nec_read(&err, stdin);
+	if( err != NULL ) die(err);
+	printf("nec_data_t {\n");
+	printf("\tpowering_on_off = %x\n", data->running_sense.powering_on_off);
+	printf("\t...\n");
+	printf("}\n");
 
-    struct in_addr *ip;
-    struct sockaddr_in *sockaddr = NULL;
-    struct addrinfo *p, hints, *res;
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-
-    if ((ret = getaddrinfo(ip_c, PORTNUMBER, &hints, &res)) != 0) {
-        fprintf(stderr, "getaddrinfo err: %s\n", gai_strerror(ret));
-        return 1;
-    }
-
-    for(p = res; p != NULL; p = p->ai_next) {
-        if ((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0) {
-            perror("socket");
-            continue;
-        }
-
-        if (connect(sock, p->ai_addr, p->ai_addrlen) != 0) {
-            perror("connect");
-            continue;
-        }
-    }
-
-    struct nec_msg_hdr* hdr = malloc(sizeof(struct nec_msg_hdr));
-    struct nec_msg* msg = malloc(sizeof(struct nec_msg));
-    memset(hdr, 0, sizeof(struct nec_msg_hdr));
-    memset(msg, 0, sizeof(struct nec_msg));
-
-    hdr->command = 0xA200;
-    hdr->projector_id = 0x01;
-    hdr->model_code = 0x2;
-    hdr->data_len = 0x02;
-    msg->hdr = hdr;
-    printf("%d\n", sizeof(*hdr));
-
-    printf("Is there an error? %x\n", nec_checkerrs(msg));
-    free(hdr);
-    free(msg);
-
-    freeaddrinfo(res);
-
-    return 0;
+	nec_library_destroy();
 }

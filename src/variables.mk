@@ -1,0 +1,5 @@
+SRC_SOURCES := nec.c main.c
+SRC_SOURCES := $(SRC_SOURCES:%=$(CURDIR)/%)
+
+SRC_OBJECTS := $(SRC_SOURCES:.c=.o)
+SRC_DEPS := $(SRC_SOURCES:.c=.d)

@@ -1,110 +1,165 @@
-#include "include/nec.h"
+#import <stdbool.h>
+#import <stdlib.h>
+#import <stdint.h>
+#import <stddef.h>
+#import <string.h>
+#import <assert.h>
 
-#include <netdb.h>
-#include <stdlib.h>
-#include <string.h>
+#import <libc.h>
 
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
+#import "nec.h"
 
-static void init_err() {
-    if (nec_err_msg != NULL) return;
+static const char * const CERROR_DOMAIN_NEC = "CERROR_DOMAIN_NEC";
+cerror_id_t CERROR_ID_NEC;
+static bool initialized = false;
 
-    nec_err_msg[NEC_ERR_UNKNOWN_COMMAND ] = 
-        "Unknown command";
-    nec_err_msg[NEC_ERR_NOT_SUPPORTED] = 
-        "The current model doesn't support this function";
-    nec_err_msg[NEC_ERR_SWITCHER_COMPAT] = 
-        "The model is not compatible with the Switcher";
-    nec_err_msg[NEC_ERR_PCVIEWER_COMPAT] = 
-        "The model is not compatible with the PC Viewer";
-    nec_err_msg[NEC_ERR_INVALID] = 
-        "Invalid values specified";
-    nec_err_msg[NEC_ERR_TERM_UNAVAIL] = 
-        "Specified terminal is not available or cannot be selected";
-    nec_err_msg[NEC_ERR_LANG_UNAVAIL] = 
-        "Selected language is not available";
-    nec_err_msg[NEC_ERR_MEM_RESERVATION] = 
-        "Available memory reservation error";
-    nec_err_msg[NEC_ERR_EXTERNAL_CTL_BROKE] = 
-        "External control not working";
-    nec_err_msg[NEC_ERR_OPER_MEM] = 
-        "Operating memory";
-    nec_err_msg[NEC_ERR_STANDBY] = 
-        "Standby";
-    nec_err_msg[NEC_ERR_FORCED_MUTE_MODE] = 
-        "On forced on-screen mute mode";
-    nec_err_msg[NEC_ERR_LINK_MODE] = 
-        "Link mode working";
-    nec_err_msg[NEC_ERR_OTHER_SIGNAL] = 
-        "Displaying a signal other than the PC viewer";
-    nec_err_msg[NEC_ERR_NO_SIGNAL] = 
-        "No signal";
-    nec_err_msg[NEC_ERR_TEST_PATTERN] = 
-        "Displaying a test pattern or PC Card files screen";
-    nec_err_msg[NEC_ERR_NO_PCCARD] = 
-        "No PC card is inserted";
-    nec_err_msg[NEC_ERR_MEMOPER_FAILED] = 
-        "Memory operation failed";
-    nec_err_msg[NEC_ERR_SWITCHER_MODE] = 
-        "Switcher mode working";
-    nec_err_msg[NEC_ERR_ENTRY_LIST] = 
-        "Displaying Entry List";
-    nec_err_msg[NEC_ERR_INVAL_GROUPNUM] = 
-        "Group number / sub category number is not correct";
-    nec_err_msg[NEC_ERR_GAIN_NOTAVAIL] = 
-        "Selected gain is not available";
-    nec_err_msg[NEC_ERR_ADJ_FAIL] = 
-        "Adjustment failed";
-    nec_err_msg[NEC_ERR_NO_START_REQ] = 
-        "Start is not requested";
-    nec_err_msg[NEC_ERR_STORING] = 
-        "Cannot process due to storing";
-    nec_err_msg[NEC_ERR_EXCEEDS_BLKS_REQ] = 
-        "Exceeds the total number of blocks required at time of start";
-    nec_err_msg[NEC_ERR_INCONSECUTIVE_BLKS] = 
-        "The block number of transferred data is not consecutive";
-
-    nec_err_msg[NEC_ERR_ENOTSUPPORTED + NEC_LAST_ERR] = 
-        "Not supported";
-    nec_err_msg[NEC_ERR_EPARAM + NEC_LAST_ERR] = 
-        "Parameter error";
-    nec_err_msg[NEC_ERR_EOPERMODE + NEC_LAST_ERR] = 
-        "Operation mode error";
-    nec_err_msg[NEC_ERR_EGAIN + NEC_LAST_ERR] = 
-        "Gain-related error";
-    nec_err_msg[NEC_ERR_ELOGOTRANS + NEC_LAST_ERR] = 
-        "Logo transfer error";
+static uint8_t nec_checksum( const void *data, size_t size ) {
+	const uint8_t *d = data;
+	uint8_t checksum = 0;
+	for( size_t i = 0; i < size; i++ ) {
+		checksum += d[i];
+	}
+	return checksum;
 }
 
-int nec_errno(struct nec_err* err, struct nec_msg* msg) {
-    init_err();
-
-    if (msg->data == NULL) return 1;
-
-    err->no = *((uint16_t*)msg->data);
-    err->class = err->no & (uint16_t)(0xFF00);
-    err->msg = nec_err_str(err->no);
-
-    return 0;
+bool nec_library_init() {
+	if( initialized ) return true;
+	CERROR_ID_NEC = cerr_create_id(CERROR_DOMAIN_NEC);
+	if( !cerr_library_init() ) return false;
+	initialized = true;
+	return true;
 }
 
-/* 0 - no errors
- * 1 - null message
- * 2 - null header
- * 0x8000 - errors
- */
-int nec_checkerrs(struct nec_msg* msg) {
-    if (msg == NULL) return 1;
-    if (msg->hdr == NULL) return 2;
-
-    return (msg->hdr->command & NEC_ERRMASK);
+void nec_library_destroy() {
+	cerr_library_destroy();
+	initialized = false;
 }
 
-/* Takes an address (either a filename or an IP) and connects to it,
- * and fills in (and malloc's) a projector struct
- */
-int nec_connect(struct nec_projector* proj, const char* address) {
-    proj = malloc(sizeof(struct nec_projector));
+nec_data_t *nec_read( cerror_t **error, FILE *stream ) {
+	cerror_t *err = NULL;
+	// Read packet header
+	nec_header_t header;
+	fread_e(&err, &header, sizeof(header), 1, stream);
+	if( err != NULL ) {
+		cerr_propagate_error(error, err);
+		return NULL;
+	};
+	
+	// Read packet data
+	uint8_t raw_data[header.data_length];
+	fread_e(&err, raw_data, 1, header.data_length, stream);
+	if( err != NULL ) {
+		cerr_propagate_error(error, err);
+		return NULL;
+	};
+	
+	// Read checksum
+	uint8_t expected_checksum;
+	fread_e(&err, &expected_checksum, sizeof(uint8_t), 1, stream);
+	if( err != NULL ) {
+		cerr_propagate_error(error, err);
+		return NULL;
+	};
+	
+	// Check checksum
+	uint8_t checksum = nec_checksum(&header, sizeof(header)) + nec_checksum(raw_data, header.data_length);
+	if( checksum != expected_checksum ) {
+		cerr_new_error(error, CERROR_ID_NEC, NEC_ERR_CHECKSUM, "Bad checksum", NULL);
+		return NULL;
+	}
+	
+	// Check for valid response
+	if( !header.id.response.is_response ) {
+		cerr_new_error(error, CERROR_ID_NEC, NEC_ERR_BAD_RESPONSE, "Bad response", NULL);
+		return NULL;
+	}
+
+	// Check for ack
+	if( !header.id.response.ack ) {
+		cerror_t *proto_error;
+		cerr_new_error(&proto_error, CERROR_ID_NEC, NEC_ERR_PROTOCOL, "Protocol error", NULL);
+		nec_error_t *ret = realloc_e(&err, proto_error, sizeof(nec_error_t));
+		if( ret != NULL ) {
+			cerr_error_free(proto_error);
+			cerr_propagate_error(error, err);
+			return NULL;
+		}
+		nec_data_t *wire_error = (nec_data_t *) raw_data;
+		const char *subtype_msg, *type_msg;
+		switch( wire_error->error.type ) {
+			case NEC_ERR_TYPE_NOT_SUPPORTED:
+				type_msg = "Not supported";
+				switch( wire_error->error.subtype.not_supported ) {
+					case NEC_ERR_UNKNOWN_COMMAND:
+						subtype_msg = "Unknown command";
+						break;
+					case NEC_ERR_FUNCTION_NOT_SUPPORTED:
+						subtype_msg = "The current model does not support this function";
+						break;
+					default:
+						subtype_msg = "Unknown error subtype";
+				}
+				break;
+			case NEC_ERR_TYPE_PARAMETER_ERROR:
+				type_msg = "Parameter error";
+				switch( wire_error->error.subtype.parameter_error ) {
+					case NEC_ERR_INVALID_VALUES:
+						subtype_msg = "Invalid values specified";
+						break;
+					case NEC_ERR_TERMINAL_UNAVAILABLE:
+						subtype_msg = "Specified terminal is unavailable or cannot be selected";
+						break;
+					default:
+						subtype_msg = "Unknown error subtype";
+				}
+				break;
+			default:
+				type_msg = "Unknwon error type";
+				subtype_msg = NULL;
+		}
+		ret->type.code = wire_error->error.type;
+		ret->type.message = type_msg;
+		ret->subtype.code = wire_error->error.subtype;
+		ret->subtype.message = subtype_msg;
+		cerr_propagate_error(error, (cerror_t *) ret);
+		return NULL;
+	}
+	
+	nec_data_t *data = malloc_e(&err, sizeof(nec_data_t));
+	if( err != NULL ) {
+		cerr_propagate_error(error, err);
+		return NULL;
+	}
+	assert(header.data_length <= sizeof(nec_data_t));
+	memcpy(data, raw_data, header.data_length);
+	return data;
+}
+
+bool nec_write( cerror_t **err, const nec_header_t *header, const void *data, FILE *stream ) {
+	// Write packet header
+	cerror_t *error = NULL;
+	fwrite_e(&error, header, sizeof(header), 1, stream);
+	if( error != NULL ) {
+		cerr_propagate_error(err, error);
+		return false;
+	}
+
+	// Write data
+	if( data != NULL ) {
+		fwrite_e(&error, data, 1, header->data_length, stream);
+		if( error != NULL ) {
+			cerr_propagate_error(err, error);
+			return false;
+		}
+	}
+
+	// Write checksum
+	uint8_t checksum = nec_checksum(header, sizeof(*header)) + nec_checksum(data, header->data_length);
+	fwrite_e(&error, &checksum, sizeof(uint8_t), 1, stream);
+	if( error != NULL ) {
+		cerr_propagate_error(err, error);
+		return false;
+	}
+	
+	return true;
 }
